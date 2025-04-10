@@ -11,6 +11,12 @@ DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 
+# Vérification des variables d'environnement
+if not all([DISCORD_TOKEN, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET]):
+    print("⚠️ Erreur: Variables d'environnement manquantes!")
+    print("Assurez-vous d'avoir configuré DISCORD_TOKEN, SPOTIFY_CLIENT_ID et SPOTIFY_CLIENT_SECRET")
+    exit(1)
+
 # Spotify client setup
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -72,12 +78,11 @@ class MusicBot:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     url2 = info['url']
-                    source = await discord.FFmpegOpusAudio.from_probe(
-                        url2,
-                        executable="ffmpeg",
-                        before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                        options="-vn -b:a 128k -acodec libopus -charset latin1"
-                    )
+                    FFMPEG_OPTIONS = {
+                        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                        'options': '-vn -b:a 128k'
+                    }
+                    source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
 
                     # Créer le message "Now Playing"
                     embed = discord.Embed(
