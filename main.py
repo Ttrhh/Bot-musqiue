@@ -39,6 +39,8 @@ ydl_opts = {
     'no_warnings': True,
     'extract_flat': True,
     'socket_timeout': 15,
+    'outtmpl': '%(title)s.%(ext)s',
+    'restrictfilenames': True,
     'http_headers': {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -73,48 +75,49 @@ class MusicBot:
                     source = await discord.FFmpegOpusAudio.from_probe(
                         url2,
                         executable="ffmpeg",
-                        before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                        before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                        options="-vn -b:a 128k -acodec libopus -charset latin1"
                     )
 
-                    # Cr茅er le message "Now Playing"
+                    # Créer le message "Now Playing"
                     embed = discord.Embed(
-                        title="馃幍 En cours de lecture",
+                        title="🎵 En cours de lecture",
                         description=f"**{info['title']}**",
                         color=discord.Color.blue()
                     )
                     embed.set_thumbnail(url=info.get('thumbnail'))
-                    embed.add_field(name="Dur茅e", value=f"{int(info['duration']/60)}:{int(info['duration']%60):02d}")
+                    embed.add_field(name="Durée", value=f"{int(info['duration']/60)}:{int(info['duration']%60):02d}")
 
-                    # Cr茅er les boutons de contr么le
+                    # Créer les boutons de contrôle
                     view = discord.ui.View()
 
-                    skip_button = discord.ui.Button(style=discord.ButtonStyle.primary, emoji="鈴笍", label="Skip")
+                    skip_button = discord.ui.Button(style=discord.ButtonStyle.primary, emoji="⏭️", label="Skip")
                     async def skip_callback(interaction: discord.Interaction):
                         guild_data = music_bot.get_guild_data(interaction.guild_id)
                         if guild_data['voice_client']:
                             guild_data['voice_client'].stop()
-                            await interaction.response.send_message("鈴笍 Musique suivante...")
+                            await interaction.response.send_message("⏭️ Musique suivante...")
                     skip_button.callback = skip_callback
 
-                    pause_button = discord.ui.Button(style=discord.ButtonStyle.secondary, emoji="鈴笍", label="Pause/Play")
+                    pause_button = discord.ui.Button(style=discord.ButtonStyle.secondary, emoji="⏯️", label="Pause/Play")
                     async def pause_callback(interaction: discord.Interaction):
                         guild_data = music_bot.get_guild_data(interaction.guild_id)
                         if guild_data['voice_client']:
                             if guild_data['voice_client'].is_paused():
                                 guild_data['voice_client'].resume()
-                                await interaction.response.send_message("鈻讹笍 Musique reprise")
+                                await interaction.response.send_message("▶️ Musique reprise")
                             else:
                                 guild_data['voice_client'].pause()
-                                await interaction.response.send_message("鈴革笍 Musique en pause")
+                                await interaction.response.send_message("⏸️ Musique en pause")
                     pause_button.callback = pause_callback
 
-                    stop_button = discord.ui.Button(style=discord.ButtonStyle.danger, emoji="鈴癸笍", label="Stop")
+                    stop_button = discord.ui.Button(style=discord.ButtonStyle.danger, emoji="⏹️", label="Stop")
                     async def stop_callback(interaction: discord.Interaction):
                         guild_data = music_bot.get_guild_data(interaction.guild_id)
                         if guild_data['voice_client']:
                             guild_data['queue'].clear()
                             guild_data['voice_client'].stop()
-                            await interaction.response.send_message("鈴癸笍 Musique arr锚t茅e")
+                            await interaction.response.send_message("⏹️ Musique arrêtée")
                     stop_button.callback = stop_callback
 
                     view.add_item(pause_button)
@@ -129,7 +132,7 @@ class MusicBot:
                 print(f"Erreur lors de la lecture: {e}")
         else:
             guild_data['is_playing'] = False
-            # D茅sactiver les boutons du dernier message
+            # Désactiver les boutons du dernier message
             async for message in ctx.channel.history(limit=50):
                 if message.author == bot.user and len(message.components) > 0:
                     view = discord.ui.View()
@@ -144,7 +147,7 @@ class MusicBot:
                             view.add_item(new_button)
                     await message.edit(view=view)
                     break
-                    
+
             if guild_data['voice_client']:
                 await guild_data['voice_client'].disconnect()
                 guild_data['voice_client'] = None
@@ -153,7 +156,7 @@ music_bot = MusicBot()
 
 async def check_voice_channel():
     while True:
-        await asyncio.sleep(30)  # V茅rifier toutes les 30 secondes
+        await asyncio.sleep(30)  # Vérifier toutes les 30 secondes
         for guild in bot.guilds:
             guild_data = music_bot.get_guild_data(guild.id)
             if guild_data['voice_client'] is not None:
@@ -167,16 +170,16 @@ async def check_voice_channel():
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} est connect茅!')
+    print(f'{bot.user} est connecté!')
     try:
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} command(s)")
-        # D茅marrer la v茅rification du salon vocal
+        # Démarrer la vérification du salon vocal
         bot.loop.create_task(check_voice_channel())
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
-@bot.tree.command(name="join", description="馃幍 Rejoint ton salon vocal pour 茅couter de la musique")
+@bot.tree.command(name="join", description="🎵 Rejoint ton salon vocal pour écouter de la musique")
 async def join(interaction: discord.Interaction):
     if interaction.user.voice:
         channel = interaction.user.voice.channel
@@ -184,70 +187,70 @@ async def join(interaction: discord.Interaction):
             guild_data = music_bot.get_guild_data(interaction.guild_id)
             guild_data['voice_client'] = await channel.connect()
             embed = discord.Embed(
-                title="馃幍 Connexion r茅ussie",
-                description=f"Je suis connect茅 au salon **{channel}**",
+                title="🎵 Connexion réussie",
+                description=f"Je suis connecté au salon **{channel}**",
                 color=discord.Color.brand_green()
             )
-            embed.add_field(name="馃懁 Demand茅 par", value=interaction.user.mention)
-            embed.add_field(name="馃摗 Latence", value=f"{round(bot.latency * 1000)}ms")
+            embed.add_field(name="👤 Demandé par", value=interaction.user.mention)
+            embed.add_field(name="📡 Latence", value=f"{round(bot.latency * 1000)}ms")
             embed.set_footer(text="Utilisez /play pour lancer une musique !")
             await interaction.response.send_message(embed=embed)
         except Exception as e:
             embed = discord.Embed(
-                title="鉂� Erreur de connexion",
+                title="❌ Erreur de connexion",
                 description=f"Une erreur est survenue : {str(e)}",
                 color=discord.Color.red()
             )
             await interaction.response.send_message(embed=embed)
     else:
         embed = discord.Embed(
-            title="鉂� Salon vocal requis",
+            title="❌ Salon vocal requis",
             description="Tu dois d'abord rejoindre un salon vocal !",
             color=discord.Color.red()
         )
-        embed.set_footer(text="Rejoignez un salon vocal et r茅essayez")
+        embed.set_footer(text="Rejoignez un salon vocal et réessayez")
         await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="play", description="馃幍 Joue une musique depuis YouTube ou Spotify")
+@bot.tree.command(name="play", description="🎵 Joue une musique depuis YouTube ou Spotify")
 async def play(interaction: discord.Interaction, url: str):
     await interaction.response.defer()
 
     try:
-        # D茅terminer si c'est un lien Spotify ou YouTube
+        # Déterminer si c'est un lien Spotify ou YouTube
         is_spotify = 'spotify.com' in url.lower()
 
         if is_spotify:
             try:
                 embed = discord.Embed(
-                    title="鈿狅笍 Support Spotify en B锚ta",
-                    description="Le support des liens Spotify est actuellement en b锚ta et peut ne pas fonctionner correctement. Veuillez utiliser un lien YouTube pour une meilleure exp茅rience.",
+                    title="⚠️ Support Spotify en Bêta",
+                    description="Le support des liens Spotify est actuellement en bêta et peut ne pas fonctionner correctement. Veuillez utiliser un lien YouTube pour une meilleure expérience.",
                     color=discord.Color.yellow()
                 )
                 await interaction.followup.send(embed=embed)
-                
+
                 # Extraire l'ID de la piste Spotify
                 if 'track' in url:
                     track_id = url.split('track/')[1].split('?')[0]
                 else:
-                    raise Exception("Le lien Spotify doit 锚tre celui d'une piste")
+                    raise Exception("Le lien Spotify doit être celui d'une piste")
 
                 try:
-                    # R茅cup茅rer les informations de la piste Spotify
+                    # Récupérer les informations de la piste Spotify
                     track_info = sp.track(track_id)
                     artist_name = track_info['artists'][0]['name']
                     track_name = track_info['name']
 
-                    # Cr茅er la requ锚te de recherche YouTube
+                    # Créer la requête de recherche YouTube
                     search_query = f"{artist_name} - {track_name} lyrics audio"
-                    
+
                     embed = discord.Embed(
-                        title="馃幍 Recherche en cours",
+                        title="🎵 Recherche en cours",
                         description=f"Recherche de **{track_name}** par **{artist_name}**",
                         color=discord.Color.blue()
                     )
                     await interaction.followup.send(embed=embed)
                 except Exception as e:
-                    raise Exception(f"Erreur lors de la r茅cup茅ration des informations Spotify: {str(e)}")
+                    raise Exception(f"Erreur lors de la récupération des informations Spotify: {str(e)}")
 
                 # Rechercher sur YouTube
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -255,27 +258,27 @@ async def play(interaction: discord.Interaction, url: str):
                     url = result['entries'][0]['webpage_url']
             except Exception as e:
                 embed = discord.Embed(
-                    title="鉂� Erreur Spotify",
+                    title="❌ Erreur Spotify",
                     description="Impossible de traiter le lien Spotify. Essayez avec un lien YouTube.",
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed)
                 return
 
-        # V茅rifier d'abord la dur茅e
+        # Vérifier d'abord la durée
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
             if info['duration'] > 300:  # 300 secondes = 5 minutes
                 embed = discord.Embed(
-                    title="鉂� Dur茅e trop longue",
-                    description="La musique d茅passe 5 minutes !",
+                    title="❌ Durée trop longue",
+                    description="La musique dépasse 5 minutes !",
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed)
                 return
 
-            # Si la dur茅e est OK, on continue avec la connexion
+            # Si la durée est OK, on continue avec la connexion
             guild_data = music_bot.get_guild_data(interaction.guild_id)
             if not guild_data['voice_client']:
                 if interaction.user.voice:
@@ -283,8 +286,8 @@ async def play(interaction: discord.Interaction, url: str):
                     guild_data['voice_client'] = await channel.connect()
                 else:
                     embed = discord.Embed(
-                        title="鉂� Erreur",
-                        description="Tu dois 锚tre dans un salon vocal !",
+                        title="❌ Erreur",
+                        description="Tu dois être dans un salon vocal !",
                         color=discord.Color.red()
                     )
                     await interaction.followup.send(embed=embed)
@@ -294,12 +297,12 @@ async def play(interaction: discord.Interaction, url: str):
             info = ydl.extract_info(url, download=False)
 
             embed = discord.Embed(
-                title="馃幍 Musique ajout茅e",
-                description=f"**{info['title']}** a 茅t茅 ajout茅 脿 la file d'attente",
+                title="🎵 Musique ajoutée",
+                description=f"**{info['title']}** a été ajouté à la file d'attente",
                 color=discord.Color.blue()
             )
             embed.set_thumbnail(url=info.get('thumbnail'))
-            embed.add_field(name="Dur茅e", value=f"{int(info['duration']/60)}:{int(info['duration']%60):02d}")
+            embed.add_field(name="Durée", value=f"{int(info['duration']/60)}:{int(info['duration']%60):02d}")
 
             guild_data['queue'].append(url)
             await interaction.followup.send(embed=embed)
@@ -310,7 +313,7 @@ async def play(interaction: discord.Interaction, url: str):
     except Exception as e:
         try:
             error_embed = discord.Embed(
-                title="鉂� Erreur",
+                title="❌ Erreur",
                 description=f"Une erreur est survenue : {str(e)}",
                 color=discord.Color.red()
             )
@@ -318,7 +321,7 @@ async def play(interaction: discord.Interaction, url: str):
         except discord.errors.NotFound:
             pass
 
-@bot.tree.command(name="skip", description="鈴笍 Passe 脿 la musique suivante dans la file d'attente")
+@bot.tree.command(name="skip", description="⏭️ Passe à la musique suivante dans la file d'attente")
 async def skip(interaction: discord.Interaction):
     guild_data = music_bot.get_guild_data(interaction.guild_id)
     if guild_data['voice_client']:
@@ -328,37 +331,37 @@ async def skip(interaction: discord.Interaction):
 
             if len(guild_data['queue']) > 0:
                 embed = discord.Embed(
-                    title="鈴笍 Musique suivante",
-                    description="Passage 脿 la musique suivante...",
+                    title="⏭️ Musique suivante",
+                    description="Passage à la musique suivante...",
                     color=discord.Color.blue()
                 )
-                embed.add_field(name="馃懁 Demand茅 par", value=interaction.user.mention)
-                embed.add_field(name="馃摑 File d'attente", value=f"{len(music_bot.queue)} musique(s) restante(s)")
+                embed.add_field(name="👤 Demandé par", value=interaction.user.mention)
+                embed.add_field(name="📝 File d'attente", value=f"{len(music_bot.queue)} musique(s) restante(s)")
             else:
                 embed = discord.Embed(
-                    title="鈴笍 Fin de la file d'attente",
-                    description="Plus aucune musique 脿 jouer",
+                    title="⏭️ Fin de la file d'attente",
+                    description="Plus aucune musique à jouer",
                     color=discord.Color.blue()
                 )
-                embed.add_field(name="馃懁 Demand茅 par", value=interaction.user.mention)
+                embed.add_field(name="👤 Demandé par", value=interaction.user.mention)
 
             await interaction.response.send_message(embed=embed)
         else:
             embed = discord.Embed(
-                title="鉂� Erreur",
+                title="❌ Erreur",
                 description="Aucune musique n'est en cours de lecture",
                 color=discord.Color.red()
             )
             await interaction.response.send_message(embed=embed)
     else:
         embed = discord.Embed(
-            title="鉂� Non connect茅",
+            title="❌ Non connecté",
             description="Je ne suis pas dans un salon vocal",
             color=discord.Color.red()
         )
         await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="leave", description="馃憢 Quitte le salon vocal et vide la file d'attente")
+@bot.tree.command(name="leave", description="👋 Quitte le salon vocal et vide la file d'attente")
 async def leave(interaction: discord.Interaction):
     guild_data = music_bot.get_guild_data(interaction.guild_id)
     if guild_data['voice_client']:
@@ -369,17 +372,17 @@ async def leave(interaction: discord.Interaction):
         guild_data['is_playing'] = False
 
         embed = discord.Embed(
-            title="馃憢 D茅connexion",
-            description=f"J'ai quitt茅 le salon **{channel_name}**",
+            title="👋 Déconnexion",
+            description=f"J'ai quitté le salon **{channel_name}**",
             color=discord.Color.brand_green()
         )
-        embed.add_field(name="馃懁 Demand茅 par", value=interaction.user.mention)
-        embed.add_field(name="馃幍 File d'attente", value="Vid茅e")
-        embed.set_footer(text="脌 bient么t !")
+        embed.add_field(name="👤 Demandé par", value=interaction.user.mention)
+        embed.add_field(name="🎵 File d'attente", value="Vidée")
+        embed.set_footer(text="À bientôt !")
         await interaction.response.send_message(embed=embed)
     else:
         embed = discord.Embed(
-            title="鉂� Non connect茅",
+            title="❌ Non connecté",
             description="Je ne suis pas dans un salon vocal",
             color=discord.Color.red()
         )
