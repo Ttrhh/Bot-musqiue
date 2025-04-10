@@ -190,7 +190,16 @@ async def join(interaction: discord.Interaction):
         channel = interaction.user.voice.channel
         try:
             guild_data = music_bot.get_guild_data(interaction.guild_id)
-            guild_data['voice_client'] = await channel.connect()
+            try:
+                guild_data['voice_client'] = await asyncio.wait_for(channel.connect(), timeout=10.0)
+            except asyncio.TimeoutError:
+                embed = discord.Embed(
+                    title="❌ Erreur de connexion",
+                    description="La connexion au salon vocal a pris trop de temps",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed)
+                return
             embed = discord.Embed(
                 title="🎵 Connexion réussie",
                 description=f"Je suis connecté au salon **{channel}**",
@@ -288,7 +297,16 @@ async def play(interaction: discord.Interaction, url: str):
             if not guild_data['voice_client']:
                 if interaction.user.voice:
                     channel = interaction.user.voice.channel
-                    guild_data['voice_client'] = await channel.connect()
+                    try:
+                        guild_data['voice_client'] = await asyncio.wait_for(channel.connect(), timeout=10.0)
+                    except asyncio.TimeoutError:
+                        embed = discord.Embed(
+                            title="❌ Erreur de connexion",
+                            description="La connexion au salon vocal a pris trop de temps",
+                            color=discord.Color.red()
+                        )
+                        await interaction.followup.send(embed=embed)
+                        return
                 else:
                     embed = discord.Embed(
                         title="❌ Erreur",
@@ -341,7 +359,7 @@ async def skip(interaction: discord.Interaction):
                     color=discord.Color.blue()
                 )
                 embed.add_field(name="👤 Demandé par", value=interaction.user.mention)
-                embed.add_field(name="📝 File d'attente", value=f"{len(music_bot.queue)} musique(s) restante(s)")
+                embed.add_field(name="📝 File d'attente", value=f"{len(guild_data['queue'])} musique(s) restante(s)")
             else:
                 embed = discord.Embed(
                     title="⏭️ Fin de la file d'attente",
